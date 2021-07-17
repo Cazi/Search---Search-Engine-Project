@@ -18,21 +18,21 @@ class Indexer(val inputFile: String) {
   //Number of words in the corpus
   var numOfWords = 0
   //Unranked documents in the corpus
-  var prevIt = new mutable.HashMap[Int, Double]()
+  val prevIt = new mutable.HashMap[Int, Double]()
   //Corpus documents ranked with PageRank
-  var currIt = new mutable.HashMap[Int, Double]()
+  val currIt = new mutable.HashMap[Int, Double]()
   //Page ids -> titles
-  var idToTitle = new mutable.HashMap[Int, String]()
+  val idToTitle = new mutable.HashMap[Int, String]()
   //titles to ids
-  var titleToID = new mutable.HashMap[String, Int]()
+  val titleToID = new mutable.HashMap[String, Int]()
   //List of ids
-  var ids = idToTitle.keys.toList //TODO fix me
+  val ids = idToTitle.keys.toList
   //Stores all the pages a page links to
-  var links = new mutable.HashMap[Int, List[String]]()
+  val links = new mutable.HashMap[Int, List[String]]()
   //all titles for weights method
-  var titles = titleToID.keys.toList //TODO fix me
+  val titles = titleToID.keys.toList
   //Final HashMap of Words -> (DocId -> relevance)
-  var outputWords = new mutable.HashMap[String,
+  val outputWords = new mutable.HashMap[String,
     mutable.HashMap[Int, Double]]()
   //Node containing entire input file
   val root: Node = xml.XML.loadFile(inputFile)
@@ -40,8 +40,6 @@ class Indexer(val inputFile: String) {
   val pageSeq: NodeSeq = root \ "page"
   //Sequence of ids extracted from the root node
   val idSeq: NodeSeq = root \ "page" \ "id"
-
-
   //Sequence of titles extracted from the root node
   val titleSeq: NodeSeq = root \ "page" \ "id"
   //Begin indexing and page rank
@@ -74,9 +72,9 @@ class Indexer(val inputFile: String) {
     What do we need to accomplish in the parse stage:
     Store all the page ids, words
      */
-    val maxOccurMap = new mutable.HashMap[Integer, Double]()
 
     for (page <- pageSeq) {
+      numOfPages += 1
       val pageId = (page \ "id").text.trim.toInt
       val pageTitle = (page \ "title").text.trim
       val pageText = (page \ "text").text.trim
@@ -200,24 +198,31 @@ class Indexer(val inputFile: String) {
 
         }
       }
-      //Calculate relevance and store it in the outputWords HashMap
-      //First, calculate term frequency
-      for (page <- idToTitle.keys.toList) {
-        var maxOccur = 0.0
-        for (word <- outputWords.keys) {
-          val wordOccur = word(page)
-          if (wordOccur > maxOccur) {
-            maxOccur = wordOccur
-          }
+    }
+
+  }
+
+  //Calculate relevance and store it in the outputWords HashMap
+  //First, calculate term frequency
+  //TODO: Check vars and vals later
+  val occurrenceMap = new mutable.HashMap[Int, Double]()
+  for ((word, map) <- outputWords) {
+    for (id <- map.keys) {
+      if (occurrenceMap.keys.toList.contains(id)) {
+        if (map(id) > occurrenceMap(id)) {
+          occurrenceMap.update(id, map(id))
         }
-        maxOccurMap.put(page, maxOccur)
-        //Using term frequency and inverse document frequency,
-        // calculate relevance
-        for (word <- outputWords.keys) {
-          outputWords(word)(page) =
-            (outputWords(word)(page) / maxOccurMap(page)) * Math.log(numOfPages / outputWords(word).size)
-        }
+        occurrenceMap.put(id, map(id))
       }
+    }
+  }
+  //Using term frequency and inverse document frequency,
+  // calculate relevance
+  for ((word, map) <- outputWords) {
+    for (id <- map.keys) {
+      map(id) =
+        (map(id) / occurrenceMap(id)) *
+          Math.log(numOfPages / outputWords(word).size)
     }
   }
 
@@ -234,10 +239,13 @@ class Indexer(val inputFile: String) {
    * @param to   - Page j
    */
   def weight(from: Integer, to: Integer): Double = {
-    if (!links.keys.toList.contains(from)) {
-      .15 / numOfPages + (.85 / numOfPages - 1)
+
+    if (from.equals(to)) {
+      .15 / numOfPages
+    } else if (!links.keys.toList.contains(from)) {
+      (.15 / numOfPages) + (.85 / (numOfPages - 1))
     } else if (links(from).contains(idToTitle(to))) {
-      .15 / numOfPages + (.85 / links(to).toSet.size)
+      (.15 / numOfPages) + (.85 / links(from).size)
     } else {
       .15 / numOfPages
     }
@@ -263,10 +271,10 @@ class Indexer(val inputFile: String) {
                    rprime: mutable.HashMap[Int, Double]): Double = {
     var sum = 0.0
     for (i <- idToTitle.keys) {
-      sum = sum + ((rprime(i) - r(i))  * (rprime(i) - r(i)))
-      println(sum)
+      sum = sum + ((rprime(i) - r(i)) * (rprime(i) - r(i)))
+      //println(sum)
     }
-    println(Math.sqrt(sum))
+    //println(Math.sqrt(sum))
     Math.sqrt(sum)
 
   }
@@ -274,15 +282,12 @@ class Indexer(val inputFile: String) {
   def pageRank(): Unit = {
     fillHashMap(0.0, idToTitle, prevIt)
     fillHashMap(1 / numOfPages, idToTitle, currIt)
-    println(idToTitle.keys)
-    println(numOfPages)
-    println("Before while")
+    //println("Before while")
     //prevIt is r and currIt is rprime
-    var distance = 1.0
-    while (distance > .001) {
-      println("Got here!")
+
+    while (rankDistance(prevIt, currIt) > .001) {
       for (page <- idToTitle.keys) {
-        prevIt(page) = currIt(page)
+        prevIt.update(page, currIt(page))
       }
       for (j <- idToTitle.keys) {
         currIt.update(j, 0.0)
@@ -292,7 +297,6 @@ class Indexer(val inputFile: String) {
           println(weight(k, j))
         }
       }
-      distance = rankDistance(prevIt, currIt)
     }
   }
 }
@@ -311,6 +315,6 @@ object Indexer {
     //error check arg size, etc
     //FileIO.writeTitlesFile(args(1), indexer.idToTitle)
     //FileIO.writeWordsFile(args(3), indexer.outputWords)
-    FileIO.writeDocsFile(args(2), indexer.prevIt)
+    FileIO.writeDocsFile(args(2), indexer.currIt)
   }
 }
