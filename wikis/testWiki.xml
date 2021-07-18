@@ -1,0 +1,27 @@
+<xml>
+    <page>
+        <title>A</title>
+        <id>1</id>
+        <text>
+            Peter Piper Picked a Pack of Pickled Peppers
+            [[B]]
+            [[Hammer]] [[Category:Computer Science]]</text>
+    </page>
+    <page><title>B</title>
+        <id>2</id>
+        <text>[[Vision]]
+            How much wood could a woodchuck chuck if a woodchuck could chuck wood?
+            [[B]]
+        </text>
+    </page>
+    <page>
+        <title>C</title>
+        <id>3</id>
+        <text>[[Catgeory:Marvel]]
+            [[A]]
+            [[B]]
+
+            She sells seashells down by the sea shore
+        </text>
+    </page>
+</xml>
