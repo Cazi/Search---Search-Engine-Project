@@ -74,7 +74,7 @@ class Indexer(val inputFile: String) {
    */
   def getLinkText(link: String): List[String] = {
     if (link.contains("|")) {
-      return link.substring(link.indexOf("|"), link.length - 2).split(" ").toList
+      return link.substring(link.indexOf("|") + 1, link.length - 2).split(" ").toList
     } else if (link.contains(":")) {
       val noBrackets = link.substring(2, link.length - 2)
       return noBrackets.substring(0, link.indexOf(":") - 1).split(" ").toList :::
@@ -97,24 +97,25 @@ class Indexer(val inputFile: String) {
     } else if (link.contains("[")) {
       return link.substring(2, link.length - 2)
     }
-    link
+    link.trim
   }
 
   private def textLinkArrays(allWords: List[String]): (List[String], List[String]) = {
     var words: List[String] = List()
     var links: List[String] = List()
     for (word <- allWords) {
+      //Don't change link titles when putting it in the links map, do lower case, stem, etc, on page link text afterwards
       if (word.matches("""\[\[[^\[]+?\]\]""")) {
         links = getLinkTitle(word) :: links
-        val linkText = getLinkText(word)
+        val linkText = getLinkText(word.toLowerCase)
         words = words ::: PorterStemmer.stemArray(linkText.filterNot(x => StopWords.isStopWord(x)).toArray).toList
       } else {
         if (!StopWords.isStopWord(word)) {
-          words = PorterStemmer.stem(word) :: words
+          words = PorterStemmer.stem(word.toLowerCase) :: words
         }
       }
     }
-    println(links)
+    //println(links)
     (words, links)
 
   }
@@ -131,7 +132,7 @@ class Indexer(val inputFile: String) {
       //Grab the id, title, and text from the current page
       val pageId = (page \ "id").text.trim.toInt
       val pageTitle = (page \ "title").text.trim
-      val pageText = (page \ "text").text.trim.toLowerCase()
+      val pageText = (page \ "text").text.trim
 
       //Extract all the words and links from the pages
       val genRegex = new Regex("""\[\[[^\[]+?\]\]|[^\W_]+'[^\W_]+|[^\W_]+""")
